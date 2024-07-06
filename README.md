@@ -16,7 +16,7 @@ This project involves creating a web scraper in Python 3.10 that extracts produc
 ## Installation
 1. Clone the repository:
    ```sh
-   git clone https://github.com/LucasGentry/web_scraping_project.git
+   git clone https://github.com/LucasGentry/web_scraping.git
 
 2. Usage
 python main.py -c <number_of_crawlers>
