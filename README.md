@@ -12,6 +12,8 @@ This project involves creating a web scraper in Python 3.10 that extracts produc
   - requests
   - pillow
   - PyMuPDF
+  - wheel
+  - cairosvg
 - Download Cairo
 Install GTK package to the machine. In my case, gtk3-runtime-3.24.31-2022-01-04-ts-win64.exe. Adding the bin path (C:\Program Files\GTK3-Runtime Win64\bin) to Environment Variables/Path.
 
