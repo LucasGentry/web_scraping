@@ -7,9 +7,12 @@ import json
 import os
 import argparse
 from io import BytesIO
+import cairosvg
 
+# Base URL for the monounsaturated fatty acids category
 BASE_URL = 'https://www.larodan.com/products/category/monounsaturated-fa/'
 
+# Fetch the content of a given URL and return the HTML text
 def fetch_page(url):
     try:
         response = requests.get(url)
@@ -21,9 +24,11 @@ def fetch_page(url):
         else:
             raise
 
+# Parse HTML content and return a BeautifulSoup object
 def parse_html(html):
     return BeautifulSoup(html, 'html.parser')
 
+# Extract product URLs from a given page's HTML content
 def get_product_urls(page_html):
     soup = parse_html(page_html)
     product_links = []
@@ -31,6 +36,7 @@ def get_product_urls(page_html):
         product_links.append(link.get('href'))
     return product_links
 
+# Handle pagination by iterating through pages and collecting all product URLs
 def handle_pagination(initial_url):
     urls = []
     page_number = 1
@@ -46,6 +52,7 @@ def handle_pagination(initial_url):
         page_number += 1
     return urls
 
+# Parse product page and extract relevant data into a dictionary
 def parse_product_page(url):
     product_html = fetch_page(url)
     if product_html is None:
@@ -85,9 +92,9 @@ def parse_product_page(url):
         'description': soup.select_one('meta[name="description"]')['content'],
         'molecular_weight': get_text_for('.product-prop:contains("Molecular weight:")'),
         'url': url,
-        'img': soup.select_one('.prod-structure img')['src'],
+        'img': soup.select_one('.prod-structure img')['src'] if soup.select_one('.prod-structure img') else None,
         'pdf_msds': get_attr_or_none('.product-prop .button.alt', 'href'),
-        'synonyms': get_text_for('.product-prop:contains("Synonyms:")').split(','),
+        'synonyms': get_text_for('.product-prop:contains("Synonyms:")').split(',') if get_text_for('.product-prop:contains("Synonyms:")') else None,
         'packaging': {
             package.select_one('td:nth-of-type(2)').text.split('-')[-1].strip(): clean_price(package.select_one('td:nth-of-type(3)').text.strip())
             for package in soup.select('.product-variations-table tr')
@@ -98,17 +105,19 @@ def parse_product_page(url):
     # Logging product data for debugging
     # print(f"Parsed data for {url}: {product_data}")
 
-    print(product_data)
     return product_data
 
+# Save product image from URL to local path
 def save_image(image_url, image_path):
     if image_url:
         response = requests.get(image_url)
         response.raise_for_status()
-        image = Image.open(BytesIO(response.content))
-        image.thumbnail((100, 100))
-        image.save(image_path)
+        try:
+            cairosvg.svg2png(bytestring=response.content, write_to=image_path)
+        except Exception as e:
+            print("Error occured while converting svg to png", repr(e))
 
+# Parse the text content of a PDF from a URL
 def parse_pdf(pdf_url):
     if pdf_url and pdf_url.startswith('http'):
         response = requests.get(pdf_url)
@@ -120,6 +129,7 @@ def parse_pdf(pdf_url):
         return text
     return ""
 
+# Save product data to a JSON file and process images and PDFs
 def save_product_data(product_data, index):
     image_dir = 'images'
     if not os.path.exists(image_dir):
@@ -128,25 +138,37 @@ def save_product_data(product_data, index):
     save_image(product_data['img'], image_path)
     product_data['image_path'] = image_path
     if product_data.get('pdf_msds') and product_data['pdf_msds'].startswith('http'):
-        pdf_text = parse_pdf(product_data['pdf_msds'])
-        if 'UN Number' in pdf_text:
-            product_data['UN_number'] = pdf_text.split('UN Number')[1].split()[0]
-    with open(f'product_{index}.json', 'w') as file:
-        json.dump(product_data, file, indent=4)
+        try:
+            pdf_text = parse_pdf(product_data['pdf_msds'])
+            if 'UN number' in pdf_text:
+                product_data['UN number'] = pdf_text.split('UN number')[1].split('\n')[1].strip()
+        except Exception as e:
+            print("Error occured while reading a pdf file,", product_data['pdf_msds'], repr(e))
+            
+    with open(f'product.json', 'a') as file:
+        try:
+            json.dump(product_data, file, indent=4)
+            file.write("\n")
+        except Exception as e:
+            print("Error occured while saving product data in", product_data['url'])
+        finally:
+            print('Processed', product_data['url'])
 
+# Main function to handle the crawling and parsing process
 def main(crawlers):
-    # product_urls = handle_pagination(BASE_URL)
-    results = parse_product_page("https://www.larodan.com/product/10z-pentadecenoic-acid/")
-    # for index, product_data in enumerate(results):
-    #     with open(f'product_{index}.json', 'w') as file:
-    #         json.dump(product_data, file, indent=4)
+    print("Starting crawling and parsing. Please, wait.")
+    # Test using one example
+    # results = parse_product_page("https://www.larodan.com/product/10z-pentadecenoic-acid/")
+    # save_product_data(results, 1)
 
-    # with ThreadPoolExecutor(max_workers=crawlers) as executor:
-    #     results = executor.map(parse_product_page, product_urls)
-    #     for index, product_data in enumerate(results):
-    #         if product_data:
-    #             save_product_data(product_data, index)
-
+    product_urls = handle_pagination(BASE_URL)
+    with ThreadPoolExecutor(max_workers=crawlers) as executor:
+        results = executor.map(parse_product_page, product_urls)
+        for index, product_data in enumerate(results):
+            if product_data:
+                save_product_data(product_data, index)
+    print("Done!")
+# Entry point of the script
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Web scraping script with parallel crawlers.')
     parser.add_argument('-c', type=int, help='Number of parallel crawlers', default=1)
