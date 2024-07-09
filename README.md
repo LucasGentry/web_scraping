@@ -21,10 +21,12 @@ Install GTK package to the machine. In my case, gtk3-runtime-3.24.31-2022-01-04-
    git clone https://github.com/LucasGentry/web_scraping.git
 
 2. Set up Envrionment
-- ```python -m venv venv
+- ```sh
+  python -m venv venv
 - Run venv/Scripts/activate to activate virtual environment.
 - Go back to the project folder.
-- ```pip install -r requirements.txt
+- ```sh
+  pip install -r requirements.txt
 
 3. Usage
 python main.py -c <number_of_crawlers>
