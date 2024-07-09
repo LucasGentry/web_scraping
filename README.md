@@ -29,6 +29,7 @@ Install GTK package to the machine. In my case, gtk3-runtime-3.24.31-2022-01-04-
   pip install -r requirements.txt
 
 3. Usage
+```sh
 python main.py -c <number_of_crawlers>
 python main.py -c 5
 
