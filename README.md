@@ -18,7 +18,7 @@ Install GTK package to the machine. In my case, gtk3-runtime-3.24.31-2022-01-04-
 ## Installation
 1. Clone the repository:
    ```sh
-   git clone https://github.com/LucasGentry/web_scraping_project.git
+   git clone https://github.com/LucasGentry/web_scraping.git
 
 2. Set up Envrionment
 - ```python -m venv venv
